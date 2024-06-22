@@ -8,23 +8,23 @@ This is the repository for the project Integrated Aircraft Navigation at TU Berl
 
 ## Tasks
 
-- [] **Loose integration** of GPS and INS to obtain an estimate of the aircraft position $(L, \lambda, h)$
-- [] **Tight integration** of GPS and INS to obtain an estimate of the aircraft position $(L, \lambda, h)$
-- [] **Detector** of possible pseudorange **step errors** in one of the pseudoranges.
+- [ ] **Loose integration** of GPS and INS to obtain an estimate of the aircraft position $(L, \lambda, h)$
+- [ ] **Tight integration** of GPS and INS to obtain an estimate of the aircraft position $(L, \lambda, h)$
+- [ ] **Detector** of possible pseudorange **step errors** in one of the pseudoranges.
 
 ## To be Submitted
 
-- [] A written report in digital form (Word or PDF).
-- [] Clearly state your assumptions, reference your sources, and outline your methodology.
-- [] Derive which algorithms you have used to calculate the 3D positions and error detection.
+- [ ] A written report in digital form (Word or PDF).
+- [ ] Clearly state your assumptions, reference your sources, and outline your methodology.
+- [ ] Derive which algorithms you have used to calculate the 3D positions and error detection.
 - The plots should include at least:
-  - [] a latitude versus longitude plot that includes INS, GPS, and Integrated solutions in different colors,
-  - [] a height versus elapsed time plot,
-  - [] number of available GPS satellites as a function of time,
-  - [] an error plot showing the difference between the GPS and GPS/INS solution in East, North, Up directions (you may include the covariance in this plot),
-  - [] a plot showing the filter innovations,
-  - [] and other plots you deem important to analyze the performance of your filter.
-- [] Include your <u>properly commented well-structured</u> Python code for the loose coupling and for the tight integration.
+  - [ ] a latitude versus longitude plot that includes INS, GPS, and Integrated solutions in different colors,
+  - [ ] a height versus elapsed time plot,
+  - [ ] number of available GPS satellites as a function of time,
+  - [ ] an error plot showing the difference between the GPS and GPS/INS solution in East, North, Up directions (you may include the covariance in this plot),
+  - [ ] a plot showing the filter innovations,
+  - [ ] and other plots you deem important to analyze the performance of your filter.
+- [ ] Include your <u>properly commented well-structured</u> Python code for the loose coupling and for the tight integration.
 
 ## Notes
 
