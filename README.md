@@ -8,18 +8,22 @@ This is the repository for the project Integrated Aircraft Navigation at TU Berl
 
 ## Table of Contents
 
-1. [Tasks](#task)
+1. [Tasks](#tasks)
 2. [To be Submitted](#tobesubmitted)
 3. [Notes](#notes)
 4. [Data Files](#datafiles)
 5. [Provided Python Functions](#providedpythonfunctions)
 6. [References](#references)
 
+<a id="tasks"></a>
+
 ## Tasks
 
 - [ ] **Loose integration** of GPS and INS to obtain an estimate of the aircraft position $(L, \lambda, h)$
 - [ ] **Tight integration** of GPS and INS to obtain an estimate of the aircraft position $(L, \lambda, h)$
 - [ ] **Detector** of possible pseudorange **step errors** in one of the pseudoranges.
+
+<a id="tobesubmitted"></a>
 
 ## To be Submitted
 
@@ -35,6 +39,8 @@ This is the repository for the project Integrated Aircraft Navigation at TU Berl
   - [ ] and other plots you deem important to analyze the performance of your filter.
 - [ ] Include your <u>properly commented well-structured</u> Python code for the loose coupling and for the tight integration.
 
+<a id="notes"></a>
+
 ## Notes
 
 In your program you should run through all the times in `t_gps`.
@@ -45,6 +51,8 @@ Therefore, for each time tag you must
 1. extract the pseudoranges,
 2. calculate the satellite and user position, and
 3. integrate these with the INS data
+
+<a id="datafiles"></a>
 
 ## Data Files
 
@@ -72,6 +80,8 @@ The latter has
 
 There are 3 different GPS data files that all must be processed and analyzed. The templates already include code that extracts the data from these files.
 
+<a id="providedpythonfunctions"></a>
+
 ## Provided Python Functions
 
 Two functions are given within the `gnss_routines.pyc` files to
@@ -95,6 +105,8 @@ The second function is:
 ```
 
 This function takes as inputs the array of pseudoranges, the corresponding satellite positions in ECEF, and the satellite clock errors. It returns the user position in ECEF through `r_ecef_gps`and the user clock error (in meters) through `sv_clock`.
+
+<a id="references"></a>
 
 ## References
 
