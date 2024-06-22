@@ -6,6 +6,15 @@
 
 This is the repository for the project Integrated Aircraft Navigation at TU Berlin in summer semester 2024
 
+## Table of Contents
+
+1. [Tasks](#task)
+2. [To be Submitted](#tobesubmitted)
+3. [Notes](#notes)
+4. [Data Files](#datafiles)
+5. [Provided Python Functions](#providedpythonfunctions)
+6. [References](#references)
+
 ## Tasks
 
 - [ ] **Loose integration** of GPS and INS to obtain an estimate of the aircraft position $(L, \lambda, h)$
