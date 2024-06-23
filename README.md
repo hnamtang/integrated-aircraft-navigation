@@ -57,7 +57,7 @@ Therefore, for each time tag you must
 
 ## Dependencies
 
-The requirements for this project are `python 3.9`, `numpy`, `scipy`, and `matplotlib`. All can be installed with `conda`with the following command:
+The requirements for this project are `python 3.9`, `numpy`, `scipy`, and `matplotlib`. All can be installed with `conda` with the following command:
 
 ```zsh
 conda install -n <env-name> python=3.9 numpy scipy matplotlib
