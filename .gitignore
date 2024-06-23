@@ -1,0 +1,6 @@
+# MAC/OSX system file
+.DS_Store
+
+# Byte-compiled files
+__pycache__/
+template_and_functions/__pycache__/
