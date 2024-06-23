@@ -10,27 +10,32 @@
 
 import sys
 
+sys.path.insert(
+    1, "../template_and_functions"
+)  # add path to custom functions for import
+
+import os
+
+data_path = os.path.abspath("../data")
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as io
-
-sys.path.insert(1, "../template_and_functions")
-
-from ecef2enu import *
-from ecef2llh import *
-from ephcal import *
+from ecef2enu import ecef2enu
+from ecef2llh import ecef2llh
+from ephcal import ephcal
 from gnss_routines import compute_pos_ecef, compute_svpos_svclock_compensate
-from llh2ecef import *
+from llh2ecef import llh2ecef
 
 plt.close("all")
 
 # GPS value for speed of light
-vlight = 299792458.0
+V_LIGHT = 299792458.0
 
 # --------------------------------------------------------
 # Load Inertial Data
 # --------------------------------------------------------
-mat = io.loadmat("ins_proj.mat")
+mat = io.loadmat(os.path.join(data_path, "ins_proj.mat"))
 t_ins = mat["t_ins"]
 r_llh_ins = mat["r_llh_ins"]
 rpy_ins = mat["rpy_ins"]
@@ -46,7 +51,7 @@ for jj in range(0, len(t_ins)):
 # --------------------------------------------------------
 # Load GNSS Data
 # --------------------------------------------------------
-mat = io.loadmat("gps_proj_scen1.mat")
+mat = io.loadmat(os.path.join(data_path, "gps_proj_scen1.mat"))
 t_gps = mat["t_gps"]
 svid_gps = mat["svid_gps"]
 pr_gps = mat["pr_gps"]
@@ -56,7 +61,7 @@ ephem = mat["ephem"]
 # --------------------------------------------------------
 # Load GNSS Reference Data
 # --------------------------------------------------------
-mat = io.loadmat("gps_ref.mat")
+mat = io.loadmat(os.path.join(data_path, "gps_ref.mat"))
 r_ref_gps = mat["r_ref_gps"]
 
 
@@ -71,10 +76,11 @@ r_ref_gps = mat["r_ref_gps"]
 # --------------------------------------------------------
 
 # Length of the time array
-N = t_gps.shape[0]
+N = len(t_gps)
 
 # Output arrays
-gnsstime = np.array([])
+# gnsstime = np.array([])
+gnsstime = []
 lat = np.array([])
 lon = np.array([])
 h = np.array([])
@@ -105,19 +111,21 @@ while ii < N:
 
     (sv_ecef, sv_clock) = compute_svpos_svclock_compensate(gpstime, svid, pr, ephem)
 
-    if svid.size >= 4:
+    # if svid.size >= 4:
+    if len(svid) >= 4:
         (r_ecef_gps[:, index_ins], user_clock) = compute_pos_ecef(
             gpstime, pr, sv_ecef, sv_clock
         )
 
-        gnsstime = np.append(gnsstime, gpstime)
+        # gnsstime = np.append(gnsstime, gpstime)
+        gnsstime.append(gpstime)
         r_llh_gps[:, index_ins] = ecef2llh(r_ecef_gps[:, index_ins])
 
     else:
         print("Not enough satellites at time = %f" % (gpstime))
 
     # Compensate the pseuforanges for the staellite clock errors
-    pr = pr + sv_clock * vlight
+    pr = pr + sv_clock * V_LIGHT
 
     # --------------------------------------------------------------
     #   Tight coupling
@@ -134,6 +142,7 @@ while ii < N:
     # Update the index
     ii = index_gps[-1] + 1
 
+gnsstime = np.asarray(gnsstime, dtype=t_gps.dtype)
 
 # --------------------------------------------------------
 # Output

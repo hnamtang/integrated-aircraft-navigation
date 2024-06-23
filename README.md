@@ -54,6 +54,14 @@ Therefore, for each time tag you must
 
 <a id="datafiles"></a>
 
+## Dependencies
+
+The requirements for this project are `python 3.9`, `numpy`, `scipy`, and `matplotlib`. All can be installed with `conda`with the following command:
+
+```zsh
+conda install -n <env-name> python=3.9 numpy scipy matplotlib
+```
+
 ## Data Files
 
 The data was collected using a DC-3 equipped with a NovAtel OEM-4-dual-frequency receiver (L1 and L2) and a tactical-grade inertial measurement unit (IMU) [[1]](#1).
