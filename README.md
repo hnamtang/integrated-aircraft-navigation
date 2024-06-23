@@ -11,9 +11,10 @@ This is the repository for the project Integrated Aircraft Navigation at TU Berl
 1. [Tasks](#tasks)
 2. [To be Submitted](#tobesubmitted)
 3. [Notes](#notes)
-4. [Data Files](#datafiles)
-5. [Provided Python Functions](#providedpythonfunctions)
-6. [References](#references)
+4. [Dependencies](#dependencies)
+5. [Data Files](#datafiles)
+6. [Provided Python Functions](#providedpythonfunctions)
+7. [References](#references)
 
 <a id="tasks"></a>
 
@@ -52,7 +53,7 @@ Therefore, for each time tag you must
 2. calculate the satellite and user position, and
 3. integrate these with the INS data
 
-<a id="datafiles"></a>
+<a id="dependencies"></a>
 
 ## Dependencies
 
@@ -61,6 +62,8 @@ The requirements for this project are `python 3.9`, `numpy`, `scipy`, and `matpl
 ```zsh
 conda install -n <env-name> python=3.9 numpy scipy matplotlib
 ```
+
+<a id="datafiles"></a>
 
 ## Data Files
 
