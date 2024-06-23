@@ -107,7 +107,7 @@ The first function is:
 (sv_ecef, sv_clock) = compute_svpos_svclock_compensate(gpstime, svid, pr, ephem)
 ```
 
-This function takes as inputs the current GPS time (`gpstime`), an array with all the satellite IDs for the current time (`svid`), and array with all the pseudoranges for the current time (`pr`) and the `ephem`. It returns two new arrays for the satellite positions in ECEF (`sv_ecef`) and the satellite clock offsets from GPS time (`sv_clock`). Output `pr_new`is the pseudorange corrected for the satellite clock offset.
+This function takes as inputs the current GPS time (`gpstime`), an array with all the satellite IDs for the current time (`svid`), and array with all the pseudoranges for the current time (`pr`) and the `ephem`. It returns two new arrays for the satellite positions in ECEF (`sv_ecef`) and the satellite clock offsets from GPS time (`sv_clock`). Output `pr_new` is the pseudorange corrected for the satellite clock offset.
 
 The second function is:
 
@@ -115,7 +115,7 @@ The second function is:
 (r_ecef_gps, user_clock) = compute_pos_ecef(gpstime, pr, sv_ecef, sv_clock)
 ```
 
-This function takes as inputs the array of pseudoranges, the corresponding satellite positions in ECEF, and the satellite clock errors. It returns the user position in ECEF through `r_ecef_gps`and the user clock error (in meters) through `sv_clock`.
+This function takes as inputs the array of pseudoranges, the corresponding satellite positions in ECEF, and the satellite clock errors. It returns the user position in ECEF through `r_ecef_gps` and the user clock error (in meters) through `sv_clock`.
 
 <a id="references"></a>
 
