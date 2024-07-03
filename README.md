@@ -127,8 +127,6 @@ The second function:
 (r_ecef_gps, user_clock) = compute_pos_ecef(gpstime, pr, sv_ecef, sv_clock)
 ```
 
-This function takes as inputs the array of pseudoranges, the corresponding satellite positions in ECEF, and the satellite clock errors. It returns the user position in ECEF through `r_ecef_gps` and the user clock error (in meters) through `sv_clock`.
-
 Inputs:
 
 - `gpstime`: the current GPS time
