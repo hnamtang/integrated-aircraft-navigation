@@ -9,6 +9,7 @@
 #
 
 import sys
+import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.join(current_dir, '..', 'template_and_functions')
@@ -18,9 +19,7 @@ sys.path.insert(0, parent_dir)
 #    1, "../template_and_functions"
 #)  # add path to custom functions for import
 
-import os
-
-data_path = os.path.abspath("../data")  # path to measurement data
+data_path = os.path.abspath("../integrated-aircraft-navigation_losse_coupling/data")  # path to measurement data
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -70,10 +69,58 @@ ephem = mat["ephem"]
 # -----------------------------------------------------------------------
 # Initialize the Kalman Filter - Loose Coupling
 # -----------------------------------------------------------------------
+v_ins = np.array([[0], [-100]])
+b_ins = np.zeros((2, 1))
+#Time Interval
+dt_ins = t_ins[1, 0] - t_ins[0, 0]
 
-# --- INSERT YOUR CODE ---
+N_STATES = 8
 
+# required number of available satellites
+# 3 SVs for position estimation + 1 SV for clock error + 1 SV for integrity check
+N_SV_REQUIRED = 3
 
+# Initialize measurement matrix
+H = np.zeros(shape=(N_SV_REQUIRED, N_STATES), dtype=float)
+H[:, -2] = 1.0
+
+# Setup state transition matrix
+# State vector is INS error vector
+N_STATES = 8  # dx, dx_dot, dy, dy_dot, dz, dz_dot, db, db_dot (b: user clock error)
+Phi = np.eye(N_STATES, dtype=float)
+Phi[[0, 2, 4, 6], [1, 3, 5, 7]] = dt_ins
+
+sigma_w = 100
+
+    # Setup process noise
+Q = np.zeros(shape=(N_STATES, N_STATES), dtype=float)
+q = (sigma_w**2) * np.array(
+        [[dt_ins**3 / 3.0, dt_ins**2 / 2.0], [dt_ins**2 / 2.0, dt_ins]]
+    )
+Q[:2, :2] = Q[2:4, 2:4] = Q[4:6, 4:6] = q
+Sf = 2e-19 / 2.0  # approximation (Lecture 5, p. 59)
+Sg = 2 * np.pi**2 * 2e-20  # approximation (Lecture 5, p. 59)
+Q[6:, 6:] = np.array(
+        [
+            [Sf * dt_ins + Sg * dt_ins**3 / 3.0, Sg * dt_ins**2 / 2.0],
+            [Sg * dt_ins**2 / 2.0, Sg * dt_ins],
+        ]
+    )
+
+I = np.eye(N_STATES)
+
+# Initialize error covariance
+r_unc = 1000
+v_unc = 100
+b_unc = 1e-1
+
+# Initialize error covariance
+# P_pre = (100**2) * np.eye(N_STATES)
+P_pre = np.diag(
+        [r_unc**2, v_unc**2, r_unc**2, v_unc**2, r_unc**2, v_unc**2, b_unc**2, b_unc**2]
+    )
+
+x_est = np.zeros(shape=(N_STATES, len(t_ins)), dtype=float)
 # --------------------------------------------------------
 # Output variables
 # --------------------------------------------------------
@@ -94,7 +141,10 @@ r_llh_gps = np.zeros((3, len(t_ins)))
 r_ecef_ins_corrected = np.zeros((3, len(t_ins)))
 r_llh_ins_corrected = np.zeros((3, len(t_ins)))
 
-
+R = (0.5**2) * np.eye(N_SV_REQUIRED)
+x_pre = x_est
+r_hist = np.zeros((3, len(t_ins)), dtype=float)
+r_ins = r_ecef_ins
 # --------------------------------------------------------
 # Go through all GPS data and compute trajectory
 # --------------------------------------------------------
@@ -131,9 +181,32 @@ while ii < N:
 
     # --- INSERT YOUR CODE ---
 
+    z = r_ins - r_ecef_gps[:N_SV_REQUIRED, [ii]]
+
+    K = P_pre @ H.T @ np.linalg.inv(H @ P_pre @ H.T + R)
+
+    z_pred = H @ x_pre
+    x_est = x_pre + K @ (z - z_pred)
+    
+    r_ins = r_ins + x_est[:3]
+    b_ins = b_ins + x_est[6:]
+
+    x_est = np.zeros(shape=(N_STATES, len(t_ins)), dtype=float)
+
+    P_est = (np.eye(N_STATES) - K @ H) @ P_pre
+
+    x_pre = Phi @ x_est
+
+    P_pre = Phi @ P_est @ Phi.T + Q
+
+    r_ecef_ins_corrected[:, index_ins] = (
+        r_ecef_ins[:, index_ins] - x_est[[[0, 2, 4]], index_ins].T
+        )
     # --------------------------------------------------------
     # Store information for plotting
     # --------------------------------------------------------
+    r_llh_ins_corrected[:, index_ins] = ecef2llh(r_ecef_ins_corrected[:, index_ins])
+
 
     # --- INSERT YOUR CODE ---
 
