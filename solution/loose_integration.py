@@ -10,9 +10,13 @@
 
 import sys
 
-sys.path.insert(
-    1, "../template_and_functions"
-)  # add path to custom functions for import
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.join(current_dir, '..', 'template_and_functions')
+sys.path.insert(0, parent_dir)
+
+#sys.path.insert(
+#    1, "../template_and_functions"
+#)  # add path to custom functions for import
 
 import os
 
