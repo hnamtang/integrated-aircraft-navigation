@@ -78,7 +78,7 @@ N_STATES = 8
 
 # required number of available satellites
 # 3 SVs for position estimation + 1 SV for clock error + 1 SV for integrity check
-N_SV_REQUIRED = 5
+N_SV_REQUIRED = 3
 
 # Initialize measurement matrix
 H = np.zeros(shape=(N_SV_REQUIRED, N_STATES), dtype=float)
