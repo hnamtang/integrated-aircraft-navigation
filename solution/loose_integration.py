@@ -19,7 +19,7 @@ sys.path.insert(0, parent_dir)
 #    1, "../template_and_functions"
 #)  # add path to custom functions for import
 
-data_path = os.path.abspath("../integrated-aircraft-navigation_losse_coupling/data")  # path to measurement data
+data_path = os.path.abspath("../data")  # path to measurement data
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -78,7 +78,7 @@ N_STATES = 8
 
 # required number of available satellites
 # 3 SVs for position estimation + 1 SV for clock error + 1 SV for integrity check
-N_SV_REQUIRED = 3
+N_SV_REQUIRED = 5
 
 # Initialize measurement matrix
 H = np.zeros(shape=(N_SV_REQUIRED, N_STATES), dtype=float)
@@ -138,8 +138,11 @@ llh_all = np.zeros((4, 0))
 
 r_ecef_gps = np.zeros((3, len(t_ins)))
 r_llh_gps = np.zeros((3, len(t_ins)))
+r_enu_gps = np.zeros_like(r_ecef_gps)
+
 r_ecef_ins_corrected = np.zeros((3, len(t_ins)))
 r_llh_ins_corrected = np.zeros((3, len(t_ins)))
+r_enu_ins_corrected = np.zeros_like(r_ecef_ins_corrected)
 
 R = (0.5**2) * np.eye(N_SV_REQUIRED)
 x_pre = x_est
@@ -171,6 +174,11 @@ while ii < N:
         # gnsstime = np.append(gnsstime, gpstime)
         gnsstime.append(gpstime)
         r_llh_gps[:, index_ins] = ecef2llh(r_ecef_gps[:, index_ins])
+        r_enu_gps[:, index_ins] = ecef2enu(
+            r_ecef_gps[:, index_ins],  # ECEF coordinates of points to be converted
+            r_ecef_gps[:, [0]],  # ENU origin in ECEF
+            r_llh_gps[:, [0]],  # ENU origin in LLH
+        )
 
     else:
         print("Not enough satellites at time = %f" % (gpstime))
@@ -180,8 +188,10 @@ while ii < N:
     # --------------------------------------------------------
 
     # --- INSERT YOUR CODE ---
+    for kk in range(len(r_ins)):
+        z = r_ins - r_ecef_gps[:N_SV_REQUIRED, [kk]]
 
-    z = r_ins - r_ecef_gps[:N_SV_REQUIRED, [ii]]
+    #z = r_ins[:, [ii]] - r_ecef_gps[:N_SV_REQUIRED, [ii]]
 
     K = P_pre @ H.T @ np.linalg.inv(H @ P_pre @ H.T + R)
 
@@ -206,7 +216,11 @@ while ii < N:
     # Store information for plotting
     # --------------------------------------------------------
     r_llh_ins_corrected[:, index_ins] = ecef2llh(r_ecef_ins_corrected[:, index_ins])
-
+    r_enu_ins_corrected[:, index_ins] = ecef2enu(
+        r_ecef_ins_corrected[:, index_ins],
+        r_ecef_ins_corrected[:, [0]],  # ENU origin in ECEF
+        r_llh_ins_corrected[:, [0]],  # ENU origin in LLH
+    )
 
     # --- INSERT YOUR CODE ---
 
@@ -221,7 +235,8 @@ gnsstime = np.asarray(gnsstime, dtype=t_gps.dtype)
 fig, ax = plt.subplots()
 ax.plot(r_llh_ins[1, :] * 180.0 / np.pi, r_llh_ins[0, :] * 180.0 / np.pi, "b")
 ax.plot(r_llh_gps[1, :] * 180.0 / np.pi, r_llh_gps[0, :] * 180.0 / np.pi, "r")
-ax.legend(["INS", "GPS"])
+ax.plot(r_llh_ins_corrected[1, :] * 180.0 / np.pi, r_llh_gps[0, :] * 180.0 / np.pi, "g")
+ax.legend(["INS", "GPS", "Loose Coopling"])
 ax.grid()
 ax.set_title("Ground Tracks with Inertial and GPS")
 ax.set_xlabel("Longitude [deg]")
@@ -232,6 +247,42 @@ ax.axis("equal")
 cvtlat = 1852 * 60
 cvtlon = 1852 * 60 * np.cos(39 * np.pi / 180)
 
-
 plt.tight_layout()
+
+# Height vs. elapsed time plot
+_, ax2 = plt.subplots()
+ax2.plot(t_ins, r_llh_ins[2, :], linewidth=1.5, linestyle="-", color="b", label="INS")
+ax2.plot(t_ins, r_llh_gps[2, :], linewidth=1.5, linestyle="-", color="r", label="GPS")
+ax2.plot(
+        t_ins,
+        r_llh_ins_corrected[2, :],
+        # linewidth=3,
+        linewidth=1.5,
+        linestyle="--",
+        color="g",
+        label="INS/GNSS Loose Coupling",
+    )
+ax2.legend(loc="lower right")
+ax2.grid()
+ax2.set_title("Height with Inertial and GPS")
+ax2.set_xlabel("Time [s]")
+ax2.set_ylabel("Height [m]")
+plt.tight_layout()
+
+# Error plot
+# TODO: compute and include the covariance in this plot
+_, ax4 = plt.subplots()
+ax4.plot(
+    t_ins,
+    (r_enu_ins_corrected - r_enu_gps).T,
+    linewidth=1.5,
+    linestyle="-",
+)
+ax4.legend(["East", "North", "Up"], loc="lower right")
+ax4.grid()
+ax4.set_title("Difference between GPS and INS/GPS Solution")
+ax4.set_xlabel("Time [s]")
+ax4.set_ylabel("Error in ENU [m]")
+plt.tight_layout()
+
 plt.show()
