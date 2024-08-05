@@ -73,22 +73,21 @@ v_ins = np.array([[0], [-100]])
 b_ins = np.zeros((2, 1))
 #Time Interval
 dt_ins = t_ins[1, 0] - t_ins[0, 0]
+N_INS = len(t_ins)
+N_STATES = 6
 
-N_STATES = 8
-
-# required number of available satellites
-# 3 SVs for position estimation + 1 SV for clock error + 1 SV for integrity check
-N_SV_REQUIRED = 3
 
 # Initialize measurement matrix
-H = np.zeros(shape=(N_SV_REQUIRED, N_STATES), dtype=float)
-H[:, -2] = 1.0
+H = np.zeros((3, 6))
+H[0, 0] = 1
+H[1, 2] = 1
+H[2, 4] = 1
 
 # Setup state transition matrix
 # State vector is INS error vector
-N_STATES = 8  # dx, dx_dot, dy, dy_dot, dz, dz_dot, db, db_dot (b: user clock error)
-Phi = np.eye(N_STATES, dtype=float)
-Phi[[0, 2, 4, 6], [1, 3, 5, 7]] = dt_ins
+N_STATES = 6  # dx, dx_dot, dy, dy_dot, dz, dz_dot, db, db_dot (b: user clock error)
+Phi = np.eye(N_STATES)
+Phi[[0, 2, 4], [1, 3, 5]] = dt_ins
 
 sigma_w = 100
 
@@ -98,14 +97,6 @@ q = (sigma_w**2) * np.array(
         [[dt_ins**3 / 3.0, dt_ins**2 / 2.0], [dt_ins**2 / 2.0, dt_ins]]
     )
 Q[:2, :2] = Q[2:4, 2:4] = Q[4:6, 4:6] = q
-Sf = 2e-19 / 2.0  # approximation (Lecture 5, p. 59)
-Sg = 2 * np.pi**2 * 2e-20  # approximation (Lecture 5, p. 59)
-Q[6:, 6:] = np.array(
-        [
-            [Sf * dt_ins + Sg * dt_ins**3 / 3.0, Sg * dt_ins**2 / 2.0],
-            [Sg * dt_ins**2 / 2.0, Sg * dt_ins],
-        ]
-    )
 
 I = np.eye(N_STATES)
 
@@ -117,10 +108,10 @@ b_unc = 1e-1
 # Initialize error covariance
 # P_pre = (100**2) * np.eye(N_STATES)
 P_pre = np.diag(
-        [r_unc**2, v_unc**2, r_unc**2, v_unc**2, r_unc**2, v_unc**2, b_unc**2, b_unc**2]
+        [r_unc**2, v_unc**2, r_unc**2, v_unc**2, r_unc**2, v_unc**2]
     )
 
-x_est = np.zeros(shape=(N_STATES, len(t_ins)), dtype=float)
+x_est = np.zeros((6))
 # --------------------------------------------------------
 # Output variables
 # --------------------------------------------------------
@@ -144,13 +135,17 @@ r_ecef_ins_corrected = np.zeros((3, len(t_ins)))
 r_llh_ins_corrected = np.zeros((3, len(t_ins)))
 r_enu_ins_corrected = np.zeros_like(r_ecef_ins_corrected)
 
-R = (0.5**2) * np.eye(N_SV_REQUIRED)
+R = (0.5**2) * np.eye(3)
 x_pre = x_est
 r_hist = np.zeros((3, len(t_ins)), dtype=float)
 r_ins = r_ecef_ins
 # --------------------------------------------------------
 # Go through all GPS data and compute trajectory
 # --------------------------------------------------------
+
+# Initialize innovation vector
+#resi = np.zeros(shape=(N_SV_REQUIRED, N_INS), dtype=float)
+
 ii = 0
 while ii < N:
 
@@ -186,43 +181,34 @@ while ii < N:
     # --------------------------------------------------------
     # Kalman Filter iteration
     # --------------------------------------------------------
+    if ii != 0:
+        if len(svid) >= 4:
+            z = r_ecef_ins[:, index_ins[0]] - r_ecef_gps[:, index_ins[0]]
 
-    # --- INSERT YOUR CODE ---
-    for kk in range(len(r_ins)):
-        z = r_ins - r_ecef_gps[:N_SV_REQUIRED, [kk]]
+            K = P_pre @ H.T @ np.linalg.inv(H @ P_pre @ H.T + R)
 
-    #z = r_ins[:, [ii]] - r_ecef_gps[:N_SV_REQUIRED, [ii]]
-
-    K = P_pre @ H.T @ np.linalg.inv(H @ P_pre @ H.T + R)
-
-    z_pred = H @ x_pre
-    x_est = x_pre + K @ (z - z_pred)
+            x_est = x_pre + K @ (z - H @ x_pre)
     
-    r_ins = r_ins + x_est[:3]
-    b_ins = b_ins + x_est[6:]
+        #r_ins = r_ins + x_est[:3]
+        #b_ins = b_ins + x_est[6:]
 
-    x_est = np.zeros(shape=(N_STATES, len(t_ins)), dtype=float)
+            P_est = (I - K @ H) @ P_pre
 
-    P_est = (np.eye(N_STATES) - K @ H) @ P_pre
+            x_pre = Phi @ x_est
 
-    x_pre = Phi @ x_est
+            P_pre = Phi @ P_est @ Phi.T + Q
+    else:
+        x_pre[::2] = r_ecef_ins[:,index_ins[0]] - r_ecef_gps[:,index_ins[0]]
+        x_est = x_pre
 
-    P_pre = Phi @ P_est @ Phi.T + Q
 
-    r_ecef_ins_corrected[:, index_ins] = (
-        r_ecef_ins[:, index_ins] - x_est[[[0, 2, 4]], index_ins].T
-        )
     # --------------------------------------------------------
     # Store information for plotting
     # --------------------------------------------------------
+    x_ecef = r_ecef_ins[:, index_ins[0]] - x_est[::2]
+    r_ecef_ins_corrected[:, index_ins[0]] = x_ecef
     r_llh_ins_corrected[:, index_ins] = ecef2llh(r_ecef_ins_corrected[:, index_ins])
-    r_enu_ins_corrected[:, index_ins] = ecef2enu(
-        r_ecef_ins_corrected[:, index_ins],
-        r_ecef_ins_corrected[:, [0]],  # ENU origin in ECEF
-        r_llh_ins_corrected[:, [0]],  # ENU origin in LLH
-    )
-
-    # --- INSERT YOUR CODE ---
+    r_enu_ins_corrected[:, index_ins] = ecef2enu(r_ecef_ins_corrected[:, index_ins], r_ecef_ins_corrected[:, [0]], r_llh_ins_corrected[:, [0]])
 
     # Update the index
     ii = index_gps[-1] + 1
@@ -235,7 +221,7 @@ gnsstime = np.asarray(gnsstime, dtype=t_gps.dtype)
 fig, ax = plt.subplots()
 ax.plot(r_llh_ins[1, :] * 180.0 / np.pi, r_llh_ins[0, :] * 180.0 / np.pi, "b")
 ax.plot(r_llh_gps[1, :] * 180.0 / np.pi, r_llh_gps[0, :] * 180.0 / np.pi, "r")
-ax.plot(r_llh_ins_corrected[1, :] * 180.0 / np.pi, r_llh_gps[0, :] * 180.0 / np.pi, "g")
+ax.plot(r_llh_ins_corrected[1, :] * 180.0 / np.pi, r_llh_gps[0, :] * 180.0 / np.pi, linestyle="--", color="g")
 ax.legend(["INS", "GPS", "Loose Coopling"])
 ax.grid()
 ax.set_title("Ground Tracks with Inertial and GPS")
@@ -284,5 +270,52 @@ ax4.set_title("Difference between GPS and INS/GPS Solution")
 ax4.set_xlabel("Time [s]")
 ax4.set_ylabel("Error in ENU [m]")
 plt.tight_layout()
+
+# Filter innovations plot
+#_, ax5 = plt.subplots()
+#ax5.plot(t_ins, resi.T)
+#ax5.legend(
+#    [r"$\Delta\rho_1$", r"$\Delta\rho_2$", r"$\Delta\rho_3$", r"$\Delta\rho_4$"],
+#    loc="lower right",
+#)
+#ax5.grid()
+#ax5.set_title("Residual")
+#ax5.set_xlabel("Time [s]")
+#ax5.set_ylabel("Residual")
+#ax5.set_ylim([-10, 10])
+#plt.tight_layout()
+
+# Benchmark
+_, ax6 = plt.subplots(nrows=3, ncols=1, sharex=True)
+ax6[0].plot(
+        t_ins,
+        r_llh_ins_corrected[1, :] - r_ref_gps[1, :],
+        linewidth=1.5,
+        color="b",
+        label="longitude",
+    )
+ax6[0].grid()
+ax6[0].set_title("Position Estimation Error")
+ax6[0].set_ylabel("Longitude [deg]")
+ax6[1].plot(
+        t_ins,
+        r_llh_ins_corrected[0, :] - r_ref_gps[0, :],
+        linewidth=1.5,
+        color="b",
+        label="latitude",
+    )
+ax6[1].grid()
+ax6[1].set_ylabel("Latitude [deg]")
+ax6[2].plot(
+        t_ins,
+        r_llh_ins_corrected[2, :] - r_ref_gps[2, :],
+        linewidth=1.5,
+        color="b",
+        label="height",
+    )
+ax6[2].grid()
+ax6[2].set_xlabel("Time [s]")
+ax6[2].set_ylabel("Height [m]")
+
 
 plt.show()
