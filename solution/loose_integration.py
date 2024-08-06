@@ -127,6 +127,8 @@ lon = np.array([])
 h = np.array([])
 llh_all = np.zeros((4, 0))
 
+residuals = []
+
 r_ecef_gps = np.zeros((3, len(t_ins)))
 r_llh_gps = np.zeros((3, len(t_ins)))
 r_enu_gps = np.zeros_like(r_ecef_gps)
@@ -177,36 +179,60 @@ while ii < N:
 
     else:
         print("Not enough satellites at time = %f" % (gpstime))
+        r_ecef_gps[:, index_ins[0]] = np.NaN
+        r_llh_gps[:, index_ins[0]] = np.NaN
 
     # --------------------------------------------------------
     # Kalman Filter iteration
     # --------------------------------------------------------
     if ii != 0:
+        dz = np.full((3), np.NaN)
         if len(svid) >= 4:
             z = r_ecef_ins[:, index_ins[0]] - r_ecef_gps[:, index_ins[0]]
 
             K = P_pre @ H.T @ np.linalg.inv(H @ P_pre @ H.T + R)
 
-            x_est = x_pre + K @ (z - H @ x_pre)
-    
-        #r_ins = r_ins + x_est[:3]
-        #b_ins = b_ins + x_est[6:]
+            dz = z - H @ x_pre
+
+            x_est = x_pre + K @ dz
 
             P_est = (I - K @ H) @ P_pre
 
             x_pre = Phi @ x_est
 
             P_pre = Phi @ P_est @ Phi.T + Q
+        else:
+            H_deadrec = np.zeros((3, 6))
+            H_deadrec[0, 1] = 1
+            H_deadrec[1, 3] = 1
+            H_deadrec[2, 5] = 1
+
+            sigma_ins = 9.81/1000 * (t_gps[ii] - t_gps[0])**2
+            R_ins = sigma_ins * np.eye(3)
+
+            z = -(r_ecef_ins[:, index_ins[0]] - r_ecef_ins[:, index_ins[0]-1]) / dt_ins
+
+            K = P_pre @ H_deadrec.T @ np.linalg.inv(H_deadrec @ P_pre @ H_deadrec.T + R_ins)
+
+            dz = z - H_deadrec @ x_pre
+
+            x_est = x_pre + K @ dz
+            P_est = (I - K @ H_deadrec) @ P_pre
+            x_pre = Phi @ x_est
+            P_pre = Phi @ P_est @ Phi.T + Q
+
+            dz[:] = np.NaN
+
+        residuals.append(dz)
     else:
         x_pre[::2] = r_ecef_ins[:,index_ins[0]] - r_ecef_gps[:,index_ins[0]]
         x_est = x_pre
-
+        residuals.append(np.full(3, np.NaN))
 
     # --------------------------------------------------------
     # Store information for plotting
     # --------------------------------------------------------
-    x_ecef = r_ecef_ins[:, index_ins[0]] - x_est[::2]
-    r_ecef_ins_corrected[:, index_ins[0]] = x_ecef
+    r_ecef_ins_corrected[:, index_ins[0]] = r_ecef_ins[:, index_ins[0]] - x_est[::2]
     r_llh_ins_corrected[:, index_ins] = ecef2llh(r_ecef_ins_corrected[:, index_ins])
     r_enu_ins_corrected[:, index_ins] = ecef2enu(r_ecef_ins_corrected[:, index_ins], r_ecef_ins_corrected[:, [0]], r_llh_ins_corrected[:, [0]])
 
@@ -221,7 +247,7 @@ gnsstime = np.asarray(gnsstime, dtype=t_gps.dtype)
 fig, ax = plt.subplots()
 ax.plot(r_llh_ins[1, :] * 180.0 / np.pi, r_llh_ins[0, :] * 180.0 / np.pi, "b")
 ax.plot(r_llh_gps[1, :] * 180.0 / np.pi, r_llh_gps[0, :] * 180.0 / np.pi, "r")
-ax.plot(r_llh_ins_corrected[1, :] * 180.0 / np.pi, r_llh_gps[0, :] * 180.0 / np.pi, linestyle="--", color="g")
+ax.plot(r_llh_ins_corrected[1, :] * 180.0 / np.pi, r_llh_ins_corrected[0, :] * 180.0 / np.pi, linestyle="--", color="g")
 ax.legend(["INS", "GPS", "Loose Coopling"])
 ax.grid()
 ax.set_title("Ground Tracks with Inertial and GPS")
@@ -236,11 +262,11 @@ cvtlon = 1852 * 60 * np.cos(39 * np.pi / 180)
 plt.tight_layout()
 
 # Height vs. elapsed time plot
-_, ax2 = plt.subplots()
-ax2.plot(t_ins, r_llh_ins[2, :], linewidth=1.5, linestyle="-", color="b", label="INS")
-ax2.plot(t_ins, r_llh_gps[2, :], linewidth=1.5, linestyle="-", color="r", label="GPS")
+fig, ax2 = plt.subplots()
+ax2.plot((t_ins - t_ins[0]), r_llh_ins[2, :], linewidth=1.5, linestyle="-", color="b", label="INS")
+ax2.plot((t_ins - t_ins[0]), r_llh_gps[2, :], linewidth=1.5, linestyle="-", color="r", label="GPS")
 ax2.plot(
-        t_ins,
+        (t_ins - t_ins[0]),
         r_llh_ins_corrected[2, :],
         # linewidth=3,
         linewidth=1.5,
@@ -257,9 +283,9 @@ plt.tight_layout()
 
 # Error plot
 # TODO: compute and include the covariance in this plot
-_, ax4 = plt.subplots()
+fig, ax4 = plt.subplots()
 ax4.plot(
-    t_ins,
+    (t_ins - t_ins[0]),
     (r_enu_ins_corrected - r_enu_gps).T,
     linewidth=1.5,
     linestyle="-",
@@ -271,24 +297,29 @@ ax4.set_xlabel("Time [s]")
 ax4.set_ylabel("Error in ENU [m]")
 plt.tight_layout()
 
-# Filter innovations plot
-#_, ax5 = plt.subplots()
-#ax5.plot(t_ins, resi.T)
-#ax5.legend(
-#    [r"$\Delta\rho_1$", r"$\Delta\rho_2$", r"$\Delta\rho_3$", r"$\Delta\rho_4$"],
-#    loc="lower right",
-#)
-#ax5.grid()
-#ax5.set_title("Residual")
-#ax5.set_xlabel("Time [s]")
-#ax5.set_ylabel("Residual")
-#ax5.set_ylim([-10, 10])
-#plt.tight_layout()
+fig, ax5 = plt.subplots(3, 1, sharex=True)
+ax5[0].plot((t_ins - t_ins[0])[5:],
+            [np.linalg.norm(x) for x in residuals[5:]])
+ax5[0].set_title("Residual Norm [m]")
+ax5[0].grid()
+
+res_enu = np.zeros((len(residuals), 3))
+for i in range(len(residuals)):
+    res_enu[i, :] = r_enu_ins_corrected[:, i] @ residuals[i]
+
+ax5[1].plot(t_ins - t_ins[0],
+            [np.linalg.norm(x[:2]) for x in np.rollaxis(res_enu, 0)])
+ax5[1].set_title("Norm Horizontal residual [m]")
+ax5[1].grid()
+
+ax5[2].plot(t_ins - t_ins[0], res_enu[:, 2])
+ax5[2].set_title("Vertical residual [m]")
+ax5[2].grid()
 
 # Benchmark
 _, ax6 = plt.subplots(nrows=3, ncols=1, sharex=True)
 ax6[0].plot(
-        t_ins,
+        (t_ins - t_ins[0]),
         r_llh_ins_corrected[1, :] - r_ref_gps[1, :],
         linewidth=1.5,
         color="b",
@@ -298,7 +329,7 @@ ax6[0].grid()
 ax6[0].set_title("Position Estimation Error")
 ax6[0].set_ylabel("Longitude [deg]")
 ax6[1].plot(
-        t_ins,
+        (t_ins - t_ins[0]),
         r_llh_ins_corrected[0, :] - r_ref_gps[0, :],
         linewidth=1.5,
         color="b",
@@ -307,7 +338,7 @@ ax6[1].plot(
 ax6[1].grid()
 ax6[1].set_ylabel("Latitude [deg]")
 ax6[2].plot(
-        t_ins,
+        (t_ins - t_ins[0]),
         r_llh_ins_corrected[2, :] - r_ref_gps[2, :],
         linewidth=1.5,
         color="b",
