@@ -58,7 +58,7 @@ r_ref_gps = mat["r_ref_gps"]
 # --------------------------------------------------------
 # Load GNSS Data
 # --------------------------------------------------------
-mat = io.loadmat(os.path.join(data_path, "gps_proj_scen1.mat"))
+mat = io.loadmat(os.path.join(data_path, "gps_proj_scen2.mat"))
 t_gps = mat["t_gps"]
 svid_gps = mat["svid_gps"]
 pr_gps = mat["pr_gps"]
@@ -129,6 +129,8 @@ llh_all = np.zeros((4, 0))
 
 residuals = []
 
+sv_available = []
+
 r_ecef_gps = np.zeros((3, len(t_ins)))
 r_llh_gps = np.zeros((3, len(t_ins)))
 r_enu_gps = np.zeros_like(r_ecef_gps)
@@ -145,9 +147,6 @@ r_ins = r_ecef_ins
 # Go through all GPS data and compute trajectory
 # --------------------------------------------------------
 
-# Initialize innovation vector
-#resi = np.zeros(shape=(N_SV_REQUIRED, N_INS), dtype=float)
-
 ii = 0
 while ii < N:
 
@@ -161,7 +160,7 @@ while ii < N:
     index_ins = (t_ins[:, 0] == gpstime).nonzero()[0]
 
     (sv_ecef, sv_clock) = compute_svpos_svclock_compensate(gpstime, svid, pr, ephem)
-
+    sv_available.append(len(svid))
     # if svid.size >= 4:
     if len(svid) >= 4:
         (r_ecef_gps[:, index_ins], user_clock) = compute_pos_ecef(
@@ -259,7 +258,6 @@ ax.axis("equal")
 cvtlat = 1852 * 60
 cvtlon = 1852 * 60 * np.cos(39 * np.pi / 180)
 
-plt.tight_layout()
 
 # Height vs. elapsed time plot
 fig, ax2 = plt.subplots()
@@ -279,7 +277,14 @@ ax2.grid()
 ax2.set_title("Height with Inertial and GPS")
 ax2.set_xlabel("Time [s]")
 ax2.set_ylabel("Height [m]")
-plt.tight_layout()
+
+# Number of available GPS satellites as a function of time
+fig, ax3 = plt.subplots()
+ax3.plot((t_ins - t_ins[0]), sv_available, linewidth=1.5, linestyle="-", color="b")
+ax3.grid()
+ax3.set_title("Number of available GPS satellites")
+ax3.set_xlabel("Time [s]")
+ax3.set_ylabel("Number of available satellites")
 
 # Error plot
 # TODO: compute and include the covariance in this plot
@@ -295,7 +300,6 @@ ax4.grid()
 ax4.set_title("Difference between GPS and INS/GPS Solution")
 ax4.set_xlabel("Time [s]")
 ax4.set_ylabel("Error in ENU [m]")
-plt.tight_layout()
 
 fig, ax5 = plt.subplots(3, 1, sharex=True)
 ax5[0].plot((t_ins - t_ins[0])[5:],
@@ -348,5 +352,5 @@ ax6[2].grid()
 ax6[2].set_xlabel("Time [s]")
 ax6[2].set_ylabel("Height [m]")
 
-
+plt.tight_layout()
 plt.show()
