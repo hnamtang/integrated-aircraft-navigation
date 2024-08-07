@@ -128,8 +128,6 @@ r_enu_ins_corrected = np.zeros_like(r_ecef_ins_corrected)
 
 R = (0.5**2) * np.eye(3)
 x_pre = x_est
-r_hist = np.zeros((3, len(t_ins)), dtype=float)
-r_ins = r_ecef_ins
 
 # --------------------------------------------------------
 # Go through all GPS data and compute trajectory
