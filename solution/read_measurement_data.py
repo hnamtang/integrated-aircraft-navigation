@@ -24,11 +24,12 @@ def read_measurement_data(filename):
         r_llh_ins = data["r_llh_ins"]
 
         # Compute the INS positions in ECEF
+        dt_ins = t_ins[1, 0] - t_ins[0, 0]
         N_INS = len(t_ins)
         r_ecef_ins = np.zeros(shape=(3, N_INS))
         for jj in range(N_INS):
             r_ecef_ins[:, [jj]] = llh2ecef(r_llh_ins[:, [jj]])
-        return t_ins, r_llh_ins, r_ecef_ins
+        return t_ins, r_llh_ins, r_ecef_ins, N_INS, dt_ins
 
     elif "scen" in filename:
         # Load GNSS data
@@ -38,7 +39,8 @@ def read_measurement_data(filename):
         pr_gps = data["pr_gps"]
         adr_gps = data["adr_gps"]
         ephem = data["ephem"]
-        return t_gps, svid_gps, pr_gps, adr_gps, ephem
+        N_GPS = len(t_gps)
+        return t_gps, svid_gps, pr_gps, adr_gps, ephem, N_GPS
 
     elif "ref" in filename:
         # Load GNSS reference data
